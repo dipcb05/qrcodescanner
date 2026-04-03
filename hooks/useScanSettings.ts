@@ -3,6 +3,8 @@ import { useState, useCallback, useEffect } from 'react'
 export interface ScanSettings {
   soundEnabled: boolean
   vibrationEnabled: boolean
+  autoCopyToClipboard: boolean
+  continuousScan: boolean
   cameraPermissionGranted: boolean
   showInstallPrompt: boolean
 }
@@ -17,6 +19,8 @@ const STORAGE_KEY = 'scan-settings'
 const DEFAULT_SETTINGS: ScanSettings = {
   soundEnabled: true,
   vibrationEnabled: true,
+  autoCopyToClipboard: false,
+  continuousScan: false,
   cameraPermissionGranted: false,
   showInstallPrompt: true,
 }

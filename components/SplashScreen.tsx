@@ -18,33 +18,28 @@ export function SplashScreen({ onStartClick, isInstallable, onInstall }: SplashS
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center p-8 overflow-hidden"
     >
-      {/* Background Decorative Elements */}
+      {/* Background Decorative Elements - Simplified for Performance */}
       <motion.div
-        className="absolute w-96 h-96 bg-primary/10 rounded-full blur-3xl -top-20 -left-20"
-        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 8, repeat: Infinity }}
+        className="absolute w-96 h-96 bg-primary/5 rounded-full -top-20 -left-20"
+        initial={{ opacity: 0.5 }}
       />
       <motion.div
-        className="absolute w-96 h-96 bg-secondary/20 rounded-full blur-3xl -bottom-20 -right-20"
-        animate={{ scale: [1.2, 1, 1.2], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 10, repeat: Infinity }}
+        className="absolute w-96 h-96 bg-secondary/10 rounded-full -bottom-20 -right-20"
+        initial={{ opacity: 0.5 }}
       />
 
       {/* Main Content */}
       <div className="relative z-10 flex flex-col items-center text-center gap-12 max-w-sm">
         {/* Animated App Icon */}
         <motion.div
-          initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
-          animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ type: 'spring', damping: 12, stiffness: 100 }}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.4 }}
           className="relative"
         >
-          <div className="w-32 h-32 rounded-[2.5rem] bg-gradient-to-tr from-primary to-primary/80 shadow-2xl flex items-center justify-center text-primary-foreground transform group-hover:scale-105 transition-transform duration-300">
+          <div className="w-32 h-32 rounded-[2.5rem] bg-gradient-to-tr from-primary to-primary/80 shadow-xl flex items-center justify-center text-primary-foreground transform group-hover:scale-105 transition-transform duration-300">
             <Scan className="w-16 h-16" strokeWidth={2.5} />
           </div>
-
-          {/* Subtle glow */}
-          <div className="absolute -inset-4 bg-primary/20 blur-xl rounded-full -z-10 animate-pulse" />
 
           <motion.div
             className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground shadow-lg border-2 border-background"

@@ -1,75 +1,92 @@
-const CACHE_NAME = 'qrcode-scanner-v1'
+/**
+ * Quick QR Service Worker - Optimised for Offline Use and Rapid Loading
+ * Version: 20260403221454
+ */
+
+const CACHE_NAME = 'quickqr-cache-20260403221454'
 const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
-  '/apple-icon-180x180.png',
   '/icon-192x192.png',
   '/icon-512x512.png',
+  '/apple-icon-180x180.png',
+  '/offline.html'
 ]
 
-// Install event
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
+      console.log('[SW] Pre-caching strategy assets')
       return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
-        console.warn('Cache addAll failed:', err)
-        return Promise.resolve()
+        console.warn('[SW] Cache addAll failed:', err)
       })
     })
   )
   self.skipWaiting()
 })
 
-// Activate event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName !== CACHE_NAME && cacheName.startsWith('quickqr-')) {
+            console.log('[SW] Deleting old cache:', cacheName)
             return caches.delete(cacheName)
           }
         })
       )
     })
   )
-  self.clients.claim()
+  return self.clients.claim()
 })
 
-// Fetch event
 self.addEventListener('fetch', (event) => {
   const { request } = event
 
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
+  if (request.method !== 'GET' || !request.url.startsWith('http')) return
+
+  const isStaticAsset = ASSETS_TO_CACHE.some(asset => request.url.endsWith(asset)) ||
+    request.url.includes('/_next/static/') ||
+    request.url.includes('.png') ||
+    request.url.includes('.jpg')
+
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        const fetchPromise = fetch(request).then((networkResponse) => {
+          if (networkResponse.status === 200) {
+            const cacheClone = networkResponse.clone()
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, cacheClone)
+            })
+          }
+          return networkResponse
+        })
+        return cachedResponse || fetchPromise
+      })
+    )
     return
   }
 
-  // Strategy: Try network first, fallback to cache
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (!response || response.status !== 200 || response.type === 'error') {
+        if (!response || response.status !== 200 || response.type !== 'basic') {
           return response
         }
 
-        // Clone and cache successful responses
         const responseToCache = response.clone()
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(request, responseToCache)
         })
-
         return response
       })
       .catch(() => {
-        // Fallback to cache
-        return caches.match(request).then((response) => {
-          return response || new Response('Offline - Page not cached', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({
-              'Content-Type': 'text/plain',
-            }),
+        return caches.match(request).then(cached => {
+          return cached || caches.match('/offline.html') || new Response('Offline - Not Cached', {
+            status: 404,
+            statusText: 'Not Found'
           })
         })
       })

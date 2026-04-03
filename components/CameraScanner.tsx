@@ -1,30 +1,40 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
-import { Zap, ZapOff, RotateCw, Pause, Play, Image as ImageIcon, FileText, ChevronLeft } from 'lucide-react'
+import { Zap, ZapOff, RotateCw, Pause, Play, ImageIcon, Home, X, Minus, Plus } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { Slider } from '@/components/ui/slider'
+import Link from 'next/link'
+import { Html5Qrcode } from 'html5-qrcode'
+import { ScanResult } from '@/hooks/useBarcodeScannerEngine'
 
 interface CameraScannerProps {
   isScanning: boolean
+  isPaused: boolean
+  onScanSuccess: (result: ScanResult) => void
   onStartScan: () => void
   onStopScan: () => void
   onToggleCamera: () => Promise<void>
   isFlashlightOn: boolean
-  onToggleFlashlight: () => Promise<void>
+  onToggleFlashlight: () => void
   flashlightSupported: boolean
   cameraError: string | null
   videoRef: React.RefObject<HTMLVideoElement | null>
   hasMultipleCameras: boolean
   onFileSelect: () => void
-  onBack: () => void
   zoom: number
   onZoomChange: (value: number) => void
   zoomRange: { min: number; max: number } | null
+  rightAction?: ReactNode
 }
+
+type EngineTier = 'native' | 'html5-qrcode' | 'jsqr'
 
 export function CameraScanner({
   isScanning,
+  isPaused,
+  onScanSuccess,
   onStartScan,
   onStopScan,
   onToggleCamera,
@@ -35,260 +45,232 @@ export function CameraScanner({
   videoRef,
   hasMultipleCameras,
   onFileSelect,
-  onBack,
   zoom,
   onZoomChange,
   zoomRange,
+  rightAction,
 }: CameraScannerProps) {
-  const scannerContainerRef = useRef<HTMLDivElement>(null)
-  const lastTouchDistance = useRef<number | null>(null)
+  const [activeTier, setActiveTier] = useState<EngineTier | null>(null)
+
+  const onScanSuccessRef = useRef(onScanSuccess)
+  useEffect(() => { onScanSuccessRef.current = onScanSuccess }, [onScanSuccess])
+  const isPausedRef = useRef(isPaused)
+  useEffect(() => { isPausedRef.current = isPaused }, [isPaused])
 
   useEffect(() => {
-    if (videoRef.current && isScanning) {
-      videoRef.current.play().catch((err) => console.error('Video play error:', err))
-    }
-  }, [isScanning, videoRef])
+    if (!isScanning || isPaused) return
+    const video = videoRef.current
+    if (!video) return
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const distance = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
-      )
-      lastTouchDistance.current = distance
-    }
-  }
+    let running = true
+    let processing = false
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastTouchDistance.current && zoomRange) {
-      const distance = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
-      )
-      const delta = (distance - lastTouchDistance.current) / 100
-      const newZoom = Math.max(zoomRange.min, Math.min(zoomRange.max, zoom + delta))
-      onZoomChange(newZoom)
-      lastTouchDistance.current = distance
-    }
-  }
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!
 
-  const handleTouchEnd = () => {
-    lastTouchDistance.current = null
-  }
+    const emitResult = (text: string, format: string) => {
+      if (text.trim().length > 0 && running && !isPausedRef.current) {
+        onScanSuccessRef.current({
+          text,
+          format,
+          timestamp: new Date(),
+        })
+      }
+    }
+
+    const captureFrame = () => {
+      const vw = video.videoWidth
+      const vh = video.videoHeight
+      if (vw <= 0 || vh <= 0) return false
+      canvas.width = 640
+      canvas.height = Math.round((vh / vw) * 640)
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      return true
+    }
+
+    const tryNativeDetector = async (): Promise<boolean> => {
+      if (typeof (window as any).BarcodeDetector !== 'function') return false
+      try {
+        const formats = await (window as any).BarcodeDetector.getSupportedFormats()
+        if (!formats || formats.length === 0) return false
+
+        const detector = new (window as any).BarcodeDetector({
+          formats: formats.filter((f: string) =>
+            ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix', 'aztec', 'pdf417'].includes(f)
+          ),
+        })
+        setActiveTier('native')
+
+        const loop = async () => {
+          if (!running) return
+          if (!processing && video.readyState >= 2 && !isPausedRef.current) {
+            processing = true
+            try {
+              const results = await detector.detect(video)
+              if (results.length > 0) {
+                emitResult(results[0].rawValue, results[0].format || 'QR_CODE')
+              }
+            } catch { }
+            processing = false
+          }
+          if (running) setTimeout(loop, 120)
+        }
+        loop()
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    const tryHtml5Qrcode = async (): Promise<boolean> => {
+      try {
+        const containerId = '__qr_decode_engine'
+        let container = document.getElementById(containerId)
+        if (!container) {
+          container = document.createElement('div')
+          container.id = containerId
+          container.style.display = 'none'
+          document.body.appendChild(container)
+        }
+
+        const html5Qr = new Html5Qrcode(containerId)
+        setActiveTier('html5-qrcode')
+
+        const loop = async () => {
+          if (!running) { html5Qr.clear(); return }
+          if (!processing && video.readyState >= 2 && !isPausedRef.current) {
+            processing = true
+            try {
+              if (captureFrame()) {
+                const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/jpeg', 0.85))
+                if (blob && running && !isPausedRef.current) {
+                  const file = new File([blob], 'frame.jpg', { type: 'image/jpeg' })
+                  try {
+                    const decoded = await html5Qr.scanFile(file, false)
+                    emitResult(decoded, 'QR_CODE')
+                  } catch { }
+                }
+              }
+            } catch { }
+            processing = false
+          }
+          if (running) setTimeout(loop, 200)
+        }
+        loop()
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    const tryJsQR = async (): Promise<boolean> => {
+      try {
+        const jsQRModule = (await import('jsqr')).default
+        setActiveTier('jsqr')
+        const loop = () => {
+          if (!running) return
+          if (!processing && video.readyState >= 2 && !isPausedRef.current) {
+            processing = true
+            try {
+              if (captureFrame()) {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+                const code = jsQRModule(imageData.data, imageData.width, imageData.height, {
+                  inversionAttempts: 'attemptBoth',
+                })
+                if (code) emitResult(code.data, 'QR_CODE')
+              }
+            } catch { }
+            processing = false
+          }
+          if (running) setTimeout(loop, 150)
+        }
+        loop()
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    const initEngine = async () => {
+      if (await tryNativeDetector()) return
+      if (await tryHtml5Qrcode()) return
+      if (await tryJsQR()) return
+    }
+
+    initEngine()
+
+    return () => {
+      running = false
+    }
+  }, [isScanning, isPaused, videoRef])
 
   if (cameraError) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
-        <div className="text-center space-y-4 max-w-sm">
-          <div className="w-16 h-16 rounded-full bg-destructive/10 mx-auto flex items-center justify-center">
-            <span className="text-2xl">📷</span>
+      <div className="w-full h-full flex items-center justify-center bg-black/95 px-8 pt-24 pb-32">
+        <div className="space-y-4 max-w-sm text-center">
+          <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto text-red-500">
+            <X className="w-10 h-10" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">Camera Access Required</h2>
-          <p className="text-sm text-muted-foreground">{cameraError}</p>
-          <p className="text-xs text-muted-foreground">
-            Please ensure you've granted camera permissions to use the barcode scanner.
-          </p>
+          <h2 className="text-2xl font-bold text-white">Camera Unavailable</h2>
+          <p className="text-sm text-white/50">{cameraError}</p>
+          <Link href="/">
+            <Button variant="outline" className="rounded-full px-10 h-12 mt-4 text-white border-white/20 hover:bg-white/10 font-bold">Return Home</Button>
+          </Link>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="relative w-full h-full bg-background overflow-hidden">
-      {/* Video Element */}
-      <div 
-        className="absolute inset-0 w-full h-full"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-          aria-label="Camera preview"
-        />
+    <div className="relative w-full h-full bg-black overflow-hidden select-none">
+      <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover z-0" />
+      <div className="absolute top-10 left-6 right-6 z-50 flex justify-between items-center pointer-events-none">
+        <Link href="/" className="pointer-events-auto">
+          <Button variant="ghost" size="icon" className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-xl hover:bg-white/20">
+            <Home className="w-6 h-6" />
+          </Button>
+        </Link>
+        <div className="pointer-events-auto">{rightAction}</div>
       </div>
 
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
-
-      {/* Scanning Frame Animation */}
-      {(isScanning || !isScanning) && ( /* Keep frame even when paused as requested */
-        <div
-          ref={scannerContainerRef}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-        >
-          <motion.div
-            className="w-72 h-72 border-2 border-primary rounded-lg"
-            animate={isScanning ? {
-              boxShadow: [
-                '0 0 0 0 rgba(102, 169, 255, 0.4)',
-                '0 0 0 20px rgba(102, 169, 255, 0)',
-              ],
-            } : {}}
-            transition={{ duration: 2, repeat: Infinity }}
-            aria-label="Scanning indicator"
-          >
-            {/* Corner marks */}
-            <div className="absolute -top-2 -left-2 w-6 h-6 border-t-2 border-l-2 border-primary" />
-            <div className="absolute -top-2 -right-2 w-6 h-6 border-t-2 border-r-2 border-primary" />
-            <div className="absolute -bottom-2 -left-2 w-6 h-6 border-b-2 border-l-2 border-primary" />
-            <div className="absolute -bottom-2 -right-2 w-6 h-6 border-b-2 border-r-2 border-primary" />
-
-            {/* Scanning line */}
-            {isScanning && (
-              <motion.div
-                className="absolute left-0 right-0 h-0.5 bg-gradient-to-b from-primary/0 via-primary to-primary/0"
-                animate={{ top: ['0%', '100%'] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                aria-hidden="true"
-              />
-            )}
-          </motion.div>
+      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none px-10">
+        <div className="relative w-full max-w-[280px] aspect-square">
+          <div className="absolute -top-1 -left-1 w-12 h-12 border-t-4 border-l-4 border-primary rounded-tl-2xl shadow-[0_0_15px_rgba(102,169,255,0.4)]" />
+          <div className="absolute -top-1 -right-1 w-12 h-12 border-t-4 border-r-4 border-primary rounded-tr-2xl shadow-[0_0_15px_rgba(102,169,255,0.4)]" />
+          <div className="absolute -bottom-1 -left-1 w-12 h-12 border-b-4 border-l-4 border-primary rounded-bl-2xl shadow-[0_0_15px_rgba(102,169,255,0.4)]" />
+          <div className="absolute -bottom-1 -right-1 w-12 h-12 border-b-4 border-r-4 border-primary rounded-br-2xl shadow-[0_0_15px_rgba(102,169,255,0.4)]" />
+          {isScanning && !isPaused && (
+            <motion.div
+              className="absolute left-6 right-6 h-0.5 bg-primary/80 blur-[1px] shadow-[0_0_20px_rgba(102,169,255,1)] z-40"
+              animate={{ top: ['15%', '85%', '15%'] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          )}
         </div>
-      )}
-
-      {/* Zoom Controls */}
-      {zoomRange && (
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-6 z-20 bg-black/30 backdrop-blur-md p-3 rounded-full border border-white/10">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => onZoomChange(zoom + 0.5)}
-            className="w-10 h-10 rounded-full text-white hover:bg-white/20"
-            disabled={zoom >= (zoomRange?.max ?? 10)}
-          >
-            <span className="text-xl font-bold">+</span>
-          </Button>
-
-          <div className="h-32 w-1.5 bg-white/10 rounded-full relative overflow-hidden">
-             <motion.div 
-               className="absolute bottom-0 left-0 right-0 bg-primary"
-               animate={{ height: `${((zoom - (zoomRange?.min ?? 1)) / ((zoomRange?.max ?? 10) - (zoomRange?.min ?? 1))) * 100}%` }}
-             />
-          </div>
-
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => onZoomChange(zoom - 0.5)}
-            className="w-10 h-10 rounded-full text-white hover:bg-white/20"
-            disabled={zoom <= (zoomRange?.min ?? 1)}
-          >
-            <span className="text-xl font-bold">-</span>
-          </Button>
-          
-          <span className="text-[10px] text-white/60 font-mono mt-1">{zoom.toFixed(1)}x</span>
-        </div>
-      )}
-
-      {/* Back Button */}
-      <div className="absolute top-8 left-6 z-20">
-        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={onBack}
-            className="w-12 h-12 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md border border-white/10 shadow-lg"
-            aria-label="Go back"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </Button>
-        </motion.div>
       </div>
 
-      {/* Status Text */}
-      {isScanning && (
-        <motion.div
-          className="absolute top-8 left-0 right-0 text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <p className="text-sm text-primary font-medium backdrop-blur-sm bg-black/30 inline-block px-4 py-2 rounded-full border border-primary/20">
-            Position barcode in frame
-          </p>
-        </motion.div>
-      )}
-
-      {/* Floating Action Buttons */}
-      <div className="absolute bottom-8 left-0 right-0 flex justify-between items-center px-8">
-        {/* Left Side: Files Button */}
-        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-          <Button
-            size="lg"
-            variant="ghost"
-            onClick={onFileSelect}
-            className="w-14 h-14 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md border border-white/20 shadow-lg"
-            aria-label="Upload from files"
-          >
+      <div className="absolute bottom-6 left-0 right-0 z-50 flex flex-col items-center gap-5 pointer-events-none">
+        <div className="w-full px-8 flex justify-between items-center">
+          <Button variant="ghost" size="icon" className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-xl hover:bg-white/20 pointer-events-auto" onClick={onFileSelect}>
             <ImageIcon className="w-6 h-6" />
           </Button>
-        </motion.div>
-
-        {/* Center: Main Scan Button and Flashlight */}
-        <div className="flex items-center gap-4">
-          {/* Flashlight Button */}
-          {flashlightSupported && (
-            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={onToggleFlashlight}
-                className="w-14 h-14 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md border border-white/20 shadow-lg"
-                aria-label={`Turn ${isFlashlightOn ? 'off' : 'on'} flashlight`}
-              >
-                {isFlashlightOn ? (
-                  <ZapOff className="w-6 h-6" />
-                ) : (
-                  <Zap className="w-6 h-6" />
-                )}
-              </Button>
-            </motion.div>
-          )}
-
-          {/* Main Scan Button */}
-          <motion.div
-            animate={!isScanning ? { scale: [1, 1.05, 1] } : {}}
-            transition={{ repeat: Infinity, duration: 2 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button
-              size="lg"
-              onClick={isScanning ? onStopScan : onStartScan}
-              className={`w-16 h-16 rounded-full shadow-2xl border-4 border-background flex items-center justify-center transition-all ${
-                isScanning ? 'bg-primary hover:bg-primary/90' : 'bg-amber-500 hover:bg-amber-600 animate-pulse'
-              }`}
-              aria-label={isScanning ? 'Freeze frame for steady scan' : 'Resume live scan'}
-            >
-              {isScanning ? (
-                <Pause className="w-8 h-8 font-bold fill-current" />
-              ) : (
-                <Play className="w-8 h-8 ml-1 fill-current" />
-              )}
-            </Button>
-          </motion.div>
-        </div>
-
-        {/* Right Side: Camera Toggle Button */}
-        {hasMultipleCameras ? (
-          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-            <Button
-              size="lg"
-              variant="ghost"
-              onClick={onToggleCamera}
-              className="w-14 h-14 rounded-full bg-black/40 hover:bg-black/60 text-white backdrop-blur-md border border-white/20 shadow-lg"
-              aria-label="Switch camera"
-            >
+          <Button onClick={isPaused ? onStartScan : onStopScan} className={`w-20 h-20 rounded-full shadow-2xl border-4 border-black/40 pointer-events-auto active:scale-95 transition-transform ${isPaused ? 'bg-amber-500' : 'bg-primary'}`}>
+            {isPaused ? <Play className="w-10 h-10 fill-current ml-1" /> : <Pause className="w-10 h-10 fill-current" />}
+          </Button>
+          {hasMultipleCameras ? (
+            <Button variant="ghost" size="icon" className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white shadow-xl hover:bg-white/20 pointer-events-auto" onClick={onToggleCamera}>
               <RotateCw className="w-6 h-6" />
             </Button>
+          ) : <div className="w-14 h-14" />}
+        </div>
+
+        {zoomRange && (
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-[85%] max-w-[320px] h-14 px-6 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full flex items-center gap-4 pointer-events-auto shadow-2xl">
+            <Button size="icon" variant="ghost" className="w-8 h-8 rounded-full text-white/70 hover:text-white" onClick={() => onZoomChange(zoom - 0.5)}><Minus className="w-4 h-4" /></Button>
+            <Slider value={[zoom]} onValueChange={(v) => onZoomChange(v[0])} min={zoomRange.min} max={zoomRange.max} step={0.1} className="flex-1" />
+            <Button size="icon" variant="ghost" className="w-8 h-8 rounded-full text-white/70 hover:text-white" onClick={() => onZoomChange(zoom + 0.5)}><Plus className="w-4 h-4" /></Button>
+            <span className="text-[10px] font-mono text-white/40 min-w-[25px]">{zoom.toFixed(1)}x</span>
           </motion.div>
-        ) : (
-          <div className="w-14 h-14" /> /* Empty space for balance */
         )}
       </div>
     </div>
