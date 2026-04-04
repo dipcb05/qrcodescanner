@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { Volume2, Smartphone, Download, RotateCcw, FolderOpen, Clipboard, Repeat } from 'lucide-react'
+import { Volume2, Smartphone, Download, RotateCcw, FolderOpen, Clipboard, Repeat, Coffee, Mail } from 'lucide-react'
 import { ScanSettings } from '@/hooks/useScanSettings'
 
 interface SettingsTabProps {
@@ -166,35 +166,6 @@ export function SettingsTab({
           </div>
         </motion.div>
 
-        {/* Install PWA */}
-        {isInstallable && (
-          <motion.div
-            variants={item}
-            className="bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 rounded-xl p-4 backdrop-blur-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-                  <Download className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">Install App</h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Add Quick QR to your home screen for quick access
-                  </p>
-                </div>
-              </div>
-              <Button
-                onClick={onInstall}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0"
-                aria-label="Install app"
-              >
-                Install
-              </Button>
-            </div>
-          </motion.div>
-        )}
-
         {/* Local Storage Connection */}
         <motion.div
           variants={item}
@@ -214,8 +185,8 @@ export function SettingsTab({
                 </p>
               </div>
             </div>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant={folderName ? "ghost" : "default"}
               onClick={onConnectFolder}
               className={`rounded-full h-8 px-4 text-xs font-semibold ${!folderName ? 'bg-primary hover:bg-primary/90' : ''}`}
@@ -251,6 +222,92 @@ export function SettingsTab({
           </div>
         </motion.div>
 
+        {/* Install PWA */}
+        {isInstallable && (
+          <motion.div
+            variants={item}
+            className="bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 rounded-xl p-4 backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+                  <Download className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground">Install App</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Add Quick QR to your home screen for quick access
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={onInstall}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0"
+                aria-label="Install app"
+              >
+                Install
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Buy Me a Coffee */}
+        <motion.div
+          variants={item}
+          className="bg-gradient-to-r from-[#FFDD00]/10 to-[#FF813F]/10 border border-[#FFDD00]/20 rounded-xl p-4 backdrop-blur-sm"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#FFDD00]/20 flex items-center justify-center">
+                <Coffee className="w-5 h-5 text-[#FF813F]" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Support Quick QR</h3>
+                <p className="text-xs text-muted-foreground">Love it? Then you can support</p>
+              </div>
+            </div>
+            <a
+              href="https://buymeacoffee.com/dipcb05"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button
+                className="bg-[#FFDD00] text-black hover:bg-[#FFDD00]/90 font-bold rounded-full px-4 h-9 text-xs border border-black/10 transition-all active:scale-95"
+                aria-label="Buy me a coffee"
+              >
+                ☕ Support
+              </Button>
+            </a>
+          </div>
+        </motion.div>
+
+        {/* Support Email */}
+        <motion.div
+          variants={item}
+          className="bg-card/50 border border-border rounded-xl p-4 backdrop-blur-sm"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-sky-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Support Email</h3>
+                <p className="text-xs text-muted-foreground">Report a bug or give a Feedback</p>
+              </div>
+            </div>
+            <a href="mailto:dev@dipchakraborty.com">
+              <Button
+                variant="outline"
+                className="rounded-full h-9 px-4 text-xs font-semibold"
+                aria-label="Send support email"
+              >
+                Email
+              </Button>
+            </a>
+          </div>
+        </motion.div>
+
         {/* App Info */}
         <motion.div
           variants={item}
@@ -259,7 +316,7 @@ export function SettingsTab({
           <div className="space-y-1 text-center">
             <h3 className="font-semibold text-sm text-foreground">Quick QR</h3>
             <p className="text-[10px] text-muted-foreground">
-              Version 2.2.0 • Routing System Active
+              Version 1.0.0
             </p>
           </div>
         </motion.div>

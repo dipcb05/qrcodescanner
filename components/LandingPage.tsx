@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { Scan, Shield, Zap, Database, Smartphone, Download, Coffee } from 'lucide-react'
+import { Scan, Shield, Zap, Database, Smartphone, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -157,28 +157,7 @@ export function LandingPage() {
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.8, type: 'spring' }}
-        className="fixed bottom-6 right-6 z-[100]"
-      >
-        <a
-          href="https://buymeacoffee.com/dipcb05"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Button
-            className="rounded-full shadow-2xl bg-[#FFDD00] text-black hover:bg-[#FFDD00]/90 transition-all hover:scale-105 active:scale-95 group border-2 border-black/10 px-6 h-14 flex items-center gap-3"
-            aria-label="Buy me a coffee"
-          >
-            <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center transition-transform group-hover:rotate-12">
-              <Coffee className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-sm">Buy me a coffee</span>
-          </Button>
-        </a>
-      </motion.div>
+
     </div>
   )
 }
