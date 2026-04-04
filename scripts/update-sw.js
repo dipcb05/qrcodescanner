@@ -18,4 +18,3 @@ if (cacheNameMatch) {
 }
 
 fs.writeFileSync(swPath, swContent);
-console.log(`[Build] Updated Service Worker version to: ${timestamp}`);

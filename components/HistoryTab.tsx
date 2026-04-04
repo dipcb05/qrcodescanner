@@ -24,6 +24,7 @@ import {
 import { Trash2, Download, Copy, Search as SearchIcon, FolderOpen, Share2, Calendar, Settings as SettingsIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { HistoryItem } from '@/hooks/useScanHistory'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 interface HistoryTabProps {
   history: HistoryItem[]
@@ -88,7 +89,7 @@ export function HistoryTab({
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Scan History</h1>
-          <div className="flex gap-1.5 items-center">
+          <div className="flex gap-2 items-center">
             {isPermissionRequired && (
               <Button
                 size="sm"
@@ -101,6 +102,7 @@ export function HistoryTab({
                 Sync
               </Button>
             )}
+            <ThemeToggle />
             <Button
               size="icon"
               variant="ghost"

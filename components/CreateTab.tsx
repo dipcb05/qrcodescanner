@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCreateHistory, QRType } from '@/hooks/useCreateHistory'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 const QR_TYPES: { value: QRType; label: string; icon: React.ElementType; color: string }[] = [
   { value: 'text', label: 'Text', icon: Type, color: 'from-violet-500 to-purple-600' },
@@ -242,9 +243,12 @@ export function CreateTab() {
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 pt-4 pb-3">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-foreground">Create QR</h1>
-          <span className="text-xs font-semibold text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-full">
-            {history.length} created
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-full">
+              {history.length} created
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
 
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">

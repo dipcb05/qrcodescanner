@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Volume2, Smartphone, Download, RotateCcw, FolderOpen, Clipboard, Repeat, Coffee, Mail } from 'lucide-react'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { ScanSettings } from '@/hooks/useScanSettings'
 
 interface SettingsTabProps {
@@ -53,7 +54,10 @@ export function SettingsTab({
   return (
     <div className="w-full h-full flex flex-col bg-background overflow-y-scroll">
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border p-4">
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+          <ThemeToggle />
+        </div>
       </div>
       <motion.div
         variants={container}
