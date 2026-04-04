@@ -11,9 +11,10 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 export function LandingPage() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstallable, setIsInstallable] = useState(false)
-  const [isPathReady, setIsPathReady] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
+    setIsMounted(true)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true
     if (isStandalone) {
       setIsInstallable(false)
@@ -32,8 +33,6 @@ export function LandingPage() {
     if (isIOS && !isStandalone) {
       setIsInstallable(true)
     }
-
-    setIsPathReady(true)
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
@@ -72,8 +71,12 @@ export function LandingPage() {
     show: { opacity: 1, y: 0 }
   }
 
+  if (!isMounted) {
+    return <div className="min-h-screen bg-background" />
+  }
+
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-[95vh] px-6 text-center space-y-10 pb-16 pt-8">
+    <div className="relative flex flex-col items-center justify-center min-h-[100svh] px-6 text-center space-y-10 pb-20 pt-8 overflow-hidden">
       <div className="fixed top-6 right-6 z-[120]">
         <ThemeToggle />
       </div>
@@ -133,31 +136,31 @@ export function LandingPage() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
+        transition={{ delay: 0.5 }}
         className="grid grid-cols-2 gap-4 w-full max-w-md"
       >
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm space-y-2 text-left">
+        <div className="p-4 rounded-2xl bg-card/60 border border-border shadow-sm space-y-2 text-left backdrop-blur-sm">
           <Zap className="w-4 h-4 text-amber-500" />
-          <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">No Ads</h3>
+          <h3 className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/80">Ad-Free</h3>
         </div>
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm space-y-2 text-left">
+        <div className="p-4 rounded-2xl bg-card/60 border border-border shadow-sm space-y-2 text-left backdrop-blur-sm">
           <Shield className="w-4 h-4 text-green-500" />
-          <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Private</h3>
+          <h3 className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/80">Private</h3>
         </div>
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm space-y-2 text-left">
+        <div className="p-4 rounded-2xl bg-card/60 border border-border shadow-sm space-y-2 text-left backdrop-blur-sm">
           <Database className="w-4 h-4 text-blue-500" />
-          <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Local Saving</h3>
+          <h3 className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/80">History</h3>
         </div>
-        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm space-y-2 text-left">
+        <div className="p-4 rounded-2xl bg-card/60 border border-border shadow-sm space-y-2 text-left backdrop-blur-sm">
           <Smartphone className="w-4 h-4 text-purple-500" />
-          <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">PWA</h3>
+          <h3 className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground/80">Offline</h3>
         </div>
       </motion.div>
 
       <motion.div
-        initial={{ x: 100, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 1.5, type: 'spring' }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.8, type: 'spring' }}
         className="fixed bottom-6 right-6 z-[100]"
       >
         <a

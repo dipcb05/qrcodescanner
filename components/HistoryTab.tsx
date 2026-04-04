@@ -54,6 +54,11 @@ export function HistoryTab({
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [exportStartDate, setExportStartDate] = useState('')
   const [exportEndDate, setExportEndDate] = useState('')
+  const [isMounted, setIsMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const filteredHistory = useMemo(() => {
     if (!searchQuery) return history
@@ -65,6 +70,8 @@ export function HistoryTab({
         item.format.toLowerCase().includes(lowerQuery)
     )
   }, [history, searchQuery])
+
+  if (!isMounted) return <div className="w-full h-full bg-background" />
 
   const container = {
     hidden: { opacity: 0 },

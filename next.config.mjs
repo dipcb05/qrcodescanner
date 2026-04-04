@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
+  allowedDevOrigins: ['mathematics-mainly-korean-ranking.trycloudflare.com'],
   typescript: {
     ignoreBuildErrors: true,
   },

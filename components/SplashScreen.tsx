@@ -59,7 +59,7 @@ export function SplashScreen({ onStartClick, isInstallable, onInstall }: SplashS
             transition={{ delay: 0.3 }}
             className="text-4xl font-extrabold tracking-tight text-foreground lg:text-5xl"
           >
-            QR Scan <span className="text-primary italic">Pro</span>
+            Quick <span className="text-primary italic">QR</span>
           </motion.h1>
           <motion.p
             initial={{ y: 20, opacity: 0 }}

@@ -1,4 +1,5 @@
 'use client'
+import React, { useState, useEffect } from 'react'
 
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,13 @@ export function SettingsTab({
   folderName,
   onConnectFolder,
 }: SettingsTabProps) {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) return <div className="w-full h-full bg-background" />
   const container = {
     hidden: { opacity: 0 },
     show: {

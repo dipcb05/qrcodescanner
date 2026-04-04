@@ -78,7 +78,7 @@ export default function RootLayout({
             <ProgressBar />
           </Suspense>
           <div className="relative flex flex-col h-[100svh] overflow-hidden">
-            <main className="flex-1 overflow-y-auto pb-20">
+            <main className="flex-1 overflow-y-auto pb-28 sm:pb-32">
               {children}
             </main>
             <Navigation />
